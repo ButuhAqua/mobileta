@@ -27,6 +27,7 @@ class ApprovalRepositoryImpl implements ApprovalRepository {
     required int requestId,
     required String supplier,
     required String batchNotes,
+    String? location,
     required List<Map<String, dynamic>> items,
   }) {
 
@@ -36,6 +37,7 @@ class ApprovalRepositoryImpl implements ApprovalRepository {
       requestId: requestId,
       supplier: supplier,
       batchNotes: batchNotes,
+      location: location,
       items: items,
     );
   }

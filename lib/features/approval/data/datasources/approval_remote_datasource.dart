@@ -31,6 +31,7 @@ class ApprovalRemoteDataSource {
     required int requestId,
     required String supplier,
     required String batchNotes,
+    String? location,
     required List<Map<String, dynamic>> items,
   }) async {
 
@@ -48,6 +49,7 @@ class ApprovalRemoteDataSource {
       body: jsonEncode({
         'supplier': supplier,
         'batch_notes': batchNotes,
+        'location': location,
         'items': items,
       }),
     );

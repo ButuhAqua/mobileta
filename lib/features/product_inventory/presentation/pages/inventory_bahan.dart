@@ -1,9 +1,95 @@
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
+// ============================================================
+// DATA MODELS (didefinisikan di awal agar tersedia)
+// ============================================================
+class RawMaterialInventoryItem {
+  final int rawMaterialId;
+  final String name;
+  final String category;
+  final String uom;
+  final int totalStock;
+  final int batchCount;
+  final DateTime? nearestExpiredDate;
+  final List<RawMaterialBatchItem> batches;
+
+  RawMaterialInventoryItem({
+    required this.rawMaterialId,
+    required this.name,
+    required this.category,
+    required this.uom,
+    required this.totalStock,
+    required this.batchCount,
+    required this.nearestExpiredDate,
+    required this.batches,
+  });
+
+  factory RawMaterialInventoryItem.fromJson(Map<String, dynamic> json) {
+    return RawMaterialInventoryItem(
+      rawMaterialId: json['raw_material_id'] ?? 0,
+      name: json['name'] ?? '',
+      category: json['category'] ?? '',
+      uom: json['uom'] ?? '',
+      totalStock: json['total_stock'] ?? 0,
+      batchCount: json['batch_count'] ?? 0,
+      nearestExpiredDate: json['nearest_expired_date'] == null
+          ? null
+          : DateTime.parse(json['nearest_expired_date']),
+      batches: ((json['batches'] ?? []) as List)
+          .map((e) => RawMaterialBatchItem.fromJson(e))
+          .toList(),
+    );
+  }
+}
+
+class RawMaterialBatchItem {
+  final int id;
+  final String batchNumber;
+  final DateTime? receivedDate;
+  final DateTime? expiredDate;
+  final int qtyIn;
+  final int qtyRemaining;
+  final String uom;
+  final String? supplier;
+  final String status;
+
+  RawMaterialBatchItem({
+    required this.id,
+    required this.batchNumber,
+    required this.receivedDate,
+    required this.expiredDate,
+    required this.qtyIn,
+    required this.qtyRemaining,
+    required this.uom,
+    required this.supplier,
+    required this.status,
+  });
+
+  factory RawMaterialBatchItem.fromJson(Map<String, dynamic> json) {
+    return RawMaterialBatchItem(
+      id: json['id'] ?? 0,
+      batchNumber: json['batch_number'] ?? '',
+      receivedDate: json['received_date'] == null
+          ? null
+          : DateTime.parse(json['received_date']),
+      expiredDate: json['expired_date'] == null
+          ? null
+          : DateTime.parse(json['expired_date']),
+      qtyIn: json['qty_in'] ?? 0,
+      qtyRemaining: json['qty_remaining'] ?? 0,
+      uom: json['uom'] ?? '',
+      supplier: json['supplier'],
+      status: json['status'] ?? 'Aman',
+    );
+  }
+}
+
+// ============================================================
+// MAIN PAGE
+// ============================================================
 class InventoryBahanPage extends StatefulWidget {
   const InventoryBahanPage({super.key});
 
@@ -656,7 +742,7 @@ class _BatchDetailSheetState extends State<_BatchDetailSheet> {
 }
 
 // ============================================================
-// WIDGET BATCH CARD
+// WIDGET BATCH CARD (LAYOUT TANPA OVERFLOW)
 // ============================================================
 class _BatchCard extends StatelessWidget {
   const _BatchCard({
@@ -719,190 +805,114 @@ class _BatchCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: statusColor.withOpacity(.2)),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 4,
-            height: 44,
-            decoration: BoxDecoration(
-              color: statusColor,
-              borderRadius: BorderRadius.circular(2),
-            ),
+          // ===== BARIS 1: Batch Number + Status =====
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  batch.batchNumber,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: Color(0xFF212121),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: statusColor.withOpacity(.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  batch.status,
+                  style: TextStyle(
+                    color: statusColor,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        batch.batchNumber,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                          color: Color(0xFF212121),
-                        ),
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: statusColor.withOpacity(.15),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        batch.status,
-                        style: TextStyle(
-                          color: statusColor,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    const Icon(Icons.inventory_2_rounded, size: 14, color: Color(0xFF616161)),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Sisa: ${batch.qtyRemaining} ${batch.uom}',
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 12,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    const Icon(Icons.event_rounded, size: 14, color: Color(0xFF616161)),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Exp: ${_formatDate(batch.expiredDate)}',
-                      style: TextStyle(
-                        color: daysLeft != null && daysLeft < 0 ? Colors.red : Colors.grey[600],
-                        fontSize: 12,
-                      ),
-                    ),
-                    if (batch.supplier != null && batch.supplier!.isNotEmpty) ...[
-                      const SizedBox(width: 12),
-                      const Icon(Icons.business_rounded, size: 14, color: Color(0xFF616161)),
-                      const SizedBox(width: 4),
-                      Text(
-                        batch.supplier!,
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-                if (daysLeft != null) ...[
-                  const SizedBox(height: 4),
+          const SizedBox(height: 6),
+
+          // ===== BARIS 2: Sisa Stok & Expired Date =====
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.inventory_2_rounded, size: 14, color: Color(0xFF616161)),
+                  const SizedBox(width: 4),
                   Text(
-                    daysLeft > 0
-                        ? '⏳ ${daysLeft.toString()} hari lagi expired'
-                        : daysLeft == 0
-                            ? '⚠️ Hari ini expired!'
-                            : '❌ Telah expired ${daysLeft.abs().toString()} hari lalu',
+                    'Sisa: ${batch.qtyRemaining} ${batch.uom}',
+                    style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                  ),
+                ],
+              ),
+              Row(
+                children: [
+                  const Icon(Icons.event_rounded, size: 14, color: Color(0xFF616161)),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Exp: ${_formatDate(batch.expiredDate)}',
                     style: TextStyle(
-                      color: daysLeft < 0 ? Colors.red : Colors.grey[600],
-                      fontSize: 11,
-                      fontWeight: daysLeft < 0 ? FontWeight.bold : FontWeight.normal,
+                      color: daysLeft != null && daysLeft < 0 ? Colors.red : Colors.grey[600],
+                      fontSize: 12,
                     ),
                   ),
                 ],
+              ),
+            ],
+          ),
+
+          // ===== BARIS 3: Supplier (jika ada) =====
+          if (batch.supplier != null && batch.supplier!.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                const Icon(Icons.business_rounded, size: 14, color: Color(0xFF616161)),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    batch.supplier!,
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 12,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               ],
             ),
-          ),
+          ],
+
+          // ===== BARIS 4: Info hari expired (opsional) =====
+          if (daysLeft != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              daysLeft > 0
+                  ? '⏳ ${daysLeft.toString()} hari lagi expired'
+                  : daysLeft == 0
+                      ? '⚠️ Hari ini expired!'
+                      : '❌ Telah expired ${daysLeft.abs().toString()} hari lalu',
+              style: TextStyle(
+                color: daysLeft < 0 ? Colors.red : Colors.grey[600],
+                fontSize: 11,
+                fontWeight: daysLeft < 0 ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          ],
         ],
       ),
-    );
-  }
-}
-
-// ============================================================
-// DATA MODELS
-// ============================================================
-class RawMaterialInventoryItem {
-  final int rawMaterialId;
-  final String name;
-  final String category;
-  final String uom;
-  final int totalStock;
-  final int batchCount;
-  final DateTime? nearestExpiredDate;
-  final List<RawMaterialBatchItem> batches;
-
-  RawMaterialInventoryItem({
-    required this.rawMaterialId,
-    required this.name,
-    required this.category,
-    required this.uom,
-    required this.totalStock,
-    required this.batchCount,
-    required this.nearestExpiredDate,
-    required this.batches,
-  });
-
-  factory RawMaterialInventoryItem.fromJson(Map<String, dynamic> json) {
-    return RawMaterialInventoryItem(
-      rawMaterialId: json['raw_material_id'] ?? 0,
-      name: json['name'] ?? '',
-      category: json['category'] ?? '',
-      uom: json['uom'] ?? '',
-      totalStock: json['total_stock'] ?? 0,
-      batchCount: json['batch_count'] ?? 0,
-      nearestExpiredDate: json['nearest_expired_date'] == null
-          ? null
-          : DateTime.parse(json['nearest_expired_date']),
-      batches: ((json['batches'] ?? []) as List)
-          .map((e) => RawMaterialBatchItem.fromJson(e))
-          .toList(),
-    );
-  }
-}
-
-class RawMaterialBatchItem {
-  final int id;
-  final String batchNumber;
-  final DateTime? receivedDate;
-  final DateTime? expiredDate;
-  final int qtyIn;
-  final int qtyRemaining;
-  final String uom;
-  final String? supplier;
-  final String status;
-
-  RawMaterialBatchItem({
-    required this.id,
-    required this.batchNumber,
-    required this.receivedDate,
-    required this.expiredDate,
-    required this.qtyIn,
-    required this.qtyRemaining,
-    required this.uom,
-    required this.supplier,
-    required this.status,
-  });
-
-  factory RawMaterialBatchItem.fromJson(Map<String, dynamic> json) {
-    return RawMaterialBatchItem(
-      id: json['id'] ?? 0,
-      batchNumber: json['batch_number'] ?? '',
-      receivedDate: json['received_date'] == null
-          ? null
-          : DateTime.parse(json['received_date']),
-      expiredDate: json['expired_date'] == null
-          ? null
-          : DateTime.parse(json['expired_date']),
-      qtyIn: json['qty_in'] ?? 0,
-      qtyRemaining: json['qty_remaining'] ?? 0,
-      uom: json['uom'] ?? '',
-      supplier: json['supplier'],
-      status: json['status'] ?? 'Aman',
     );
   }
 }

@@ -14,6 +14,7 @@ abstract class ApprovalRepository {
     required int requestId,
     required String supplier,
     required String batchNotes,
+    String? location,
     required List<Map<String, dynamic>> items,
   });
 

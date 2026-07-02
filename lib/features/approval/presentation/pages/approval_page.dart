@@ -249,40 +249,23 @@ class _ApprovalPageState extends State<ApprovalPage> {
   Future<void> _completePengajuan(
     Pengajuan item,
   ) async {
-
-    final form = await _showCompletePengajuanDialog(
-      item,
-    );
-
+    final form = await _showCompletePengajuanDialog(item);
     if (form == null) return;
 
     await _processApproval(
-
       action: () async {
-
         final token = await _getToken();
-
-        final complete =
-            CompleteRawMaterialRequest(
-          _approvalRepository(),
-        );
-
+        final complete = CompleteRawMaterialRequest(_approvalRepository());
         await complete(
-
           token: token,
-
           requestId: int.parse(item.id),
-
           supplier: form['supplier'],
-
           batchNotes: form['batch_notes'],
-
+          location: form['location'], // ✅ perbaiki di sini
           items: form['items'],
         );
       },
-
-      successMessage:
-          'Pengajuan bahan baku selesai',
+      successMessage: 'Pengajuan bahan baku selesai',
     );
   }
 
@@ -317,6 +300,9 @@ class _ApprovalPageState extends State<ApprovalPage> {
         TextEditingController();
 
     final notesC =
+        TextEditingController();
+
+    final locationC = 
         TextEditingController();
 
     final expiredDates =
@@ -367,6 +353,17 @@ class _ApprovalPageState extends State<ApprovalPage> {
                       const SizedBox(
                         height: 14,
                       ),
+
+                      // LOKASI PEMBELIAN (BARU)
+                      TextField(
+                        controller: locationC, // ← PAKAI CONTROLLER
+                        decoration: const InputDecoration(
+                          labelText: 'Lokasi Pembelian',
+                          hintText: 'Toko atau tempat pembelian',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
 
                       // =====================================
                       // NOTES
@@ -572,37 +569,18 @@ class _ApprovalPageState extends State<ApprovalPage> {
                       }
                     }
 
-                    Navigator.pop(
-                      context,
-
-                      {
-                        'supplier':
-                            supplierC.text
-                                .trim(),
-
-                        'batch_notes':
-                            notesC.text
-                                .trim(),
-
-                        'items':
-                            item.items.map((e) {
-
-                          final d =
-                              expiredDates[
-                                  e.rawMaterialId!]!;
-
-                          return {
-
-                            'raw_material_id':
-                                e.rawMaterialId,
-
-                            'expired_date':
-                                '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}',
-                          };
-
-                        }).toList(),
-                      },
-                    );
+                    Navigator.pop(context, {
+                      'supplier': supplierC.text.trim(),
+                      'batch_notes': notesC.text.trim(),
+                      'location': locationC.text.trim(), // ← PASTIKAN KUTIPANNYA BENAR
+                      'items': item.items.map((e) {
+                        final d = expiredDates[e.rawMaterialId!]!;
+                        return {
+                          'raw_material_id': e.rawMaterialId,
+                          'expired_date': '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}',
+                        };
+                      }).toList(),
+                    });
                   },
 
                   child:

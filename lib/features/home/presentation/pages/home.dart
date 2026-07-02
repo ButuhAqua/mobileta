@@ -9,6 +9,10 @@ import 'package:apps_break/features/laporan_produksi/presentation/pages/list_for
 import 'package:apps_break/features/product_inventory/presentation/pages/inventory.dart';
 import 'package:apps_break/features/product_inventory/presentation/pages/inventory_pA.dart';
 import 'package:apps_break/features/product_inventory/presentation/pages/inventory_pB.dart';
+import 'package:apps_break/features/product_inventory/presentation/pages/inventory_pC.dart';
+import 'package:apps_break/features/product_inventory/presentation/pages/inventory_pD.dart';
+import 'package:apps_break/features/product_inventory/presentation/pages/inventory_pE.dart';
+import 'package:apps_break/features/product_inventory/presentation/pages/inventory_pF.dart';
 import 'package:apps_break/features/profile/presentation/pages/profile.dart' as profile;
 import 'package:apps_break/features/approval/presentation/pages/approval_page.dart';
 
@@ -252,14 +256,25 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _runnerInventoryPage() {
+    // import halaman gerobak C-F di atas
     if (_assignedLocation == 'Gerobak A') {
       return const InventoryGerobakAPage();
     }
-
     if (_assignedLocation == 'Gerobak B') {
       return const InventoryGerobakBPage();
     }
-
+    if (_assignedLocation == 'Gerobak C') {
+      return const InventoryGerobakCPage();
+    }
+    if (_assignedLocation == 'Gerobak D') {
+      return const InventoryGerobakDPage();
+    }
+    if (_assignedLocation == 'Gerobak E') {
+      return const InventoryGerobakEPage();
+    }
+    if (_assignedLocation == 'Gerobak F') {
+      return const InventoryGerobakFPage();
+    }
     return const InventoryPage();
   }
 

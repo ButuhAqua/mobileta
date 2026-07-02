@@ -35,6 +35,7 @@ class _CreateFormSubBahanPageState extends State<CreateFormSubBahanPage> {
   final _lokasiPembelianC = TextEditingController();
 
   String _prioritas = 'Normal';
+  String _userRole = '';
   DateTime _tanggal = DateTime.now();
 
   final List<_ItemRowData> _items = [_ItemRowData()];
@@ -44,9 +45,15 @@ class _CreateFormSubBahanPageState extends State<CreateFormSubBahanPage> {
 
   List<Map<String, dynamic>> _rawMaterials = [];
 
+  // ============================================================
+  // ROLE-BASED ACCESS
+  // ============================================================
+  bool get _canEditLocation => ['Admin', 'Manajer', 'Owner'].contains(_userRole);
+
   @override
   void initState() {
     super.initState();
+    _loadUserRole();
     _loadRawMaterials();
   }
 
@@ -63,6 +70,27 @@ class _CreateFormSubBahanPageState extends State<CreateFormSubBahanPage> {
     super.dispose();
   }
 
+  // ============================================================
+  // LOAD USER ROLE
+  // ============================================================
+  Future<void> _loadUserRole() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      // Ambil role dari SharedPreferences (disimpan saat login)
+      final role = prefs.getString('user_role') ?? '';
+
+      setState(() {
+        _userRole = role;
+      });
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  // ============================================================
+  // LOAD RAW MATERIALS
+  // ============================================================
   Future<void> _loadRawMaterials() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -92,6 +120,9 @@ class _CreateFormSubBahanPageState extends State<CreateFormSubBahanPage> {
     }
   }
 
+  // ============================================================
+  // DATE PICKER
+  // ============================================================
   Future<void> _pickDatePengajuan() async {
     final picked = await showDatePicker(
       context: context,
@@ -105,6 +136,9 @@ class _CreateFormSubBahanPageState extends State<CreateFormSubBahanPage> {
     }
   }
 
+  // ============================================================
+  // ITEM MANAGEMENT
+  // ============================================================
   void _addItem() {
     setState(() => _items.add(_ItemRowData()));
   }
@@ -118,6 +152,9 @@ class _CreateFormSubBahanPageState extends State<CreateFormSubBahanPage> {
     }
   }
 
+  // ============================================================
+  // SUBMIT
+  // ============================================================
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -157,7 +194,10 @@ class _CreateFormSubBahanPageState extends State<CreateFormSubBahanPage> {
         priority: _prioritas,
         requestDate: _tanggal,
         notes: _catatanC.text.trim(),
-        purchaseLocation: _lokasiPembelianC.text.trim(),
+        // ============================================================
+        // HANYA KIRIM LOKASI JIKA ROLE BERHAK
+        // ============================================================
+        purchaseLocation: _canEditLocation ? _lokasiPembelianC.text.trim() : null,
         status: 'Menunggu',
         items: _items.map((item) {
           return PengajuanItem(
@@ -192,6 +232,9 @@ class _CreateFormSubBahanPageState extends State<CreateFormSubBahanPage> {
     }
   }
 
+  // ============================================================
+  // BUILD
+  // ============================================================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -303,13 +346,56 @@ class _CreateFormSubBahanPageState extends State<CreateFormSubBahanPage> {
                             ),
                 ),
                 const SizedBox(height: 16),
+
+                // ============================================================
+                // LOKASI PEMBELIAN (HANYA UNTUK ROLE TERTENTU)
+                // ============================================================
                 _SectionCard(
                   title: 'Lokasi Pembelian',
-                  child: _textField(
-                    label: 'Beli di toko mana?',
-                    controller: _lokasiPembelianC,
-                  ),
+                  child: _canEditLocation
+                      ? _textField(
+                          label: 'Beli di toko mana?',
+                          controller: _lokasiPembelianC,
+                        )
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 4),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 14,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[100],
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(color: kBorder),
+                              ),
+                              child: const Row(
+                                children: [
+                                  Icon(
+                                    Icons.lock_outline_rounded,
+                                    size: 18,
+                                    color: Colors.grey,
+                                  ),
+                                  SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      'Hanya dapat diisi oleh Admin / Manajer / Owner',
+                                      style: TextStyle(
+                                        color: Colors.grey,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                 ),
+
                 const SizedBox(height: 24),
                 SizedBox(
                   width: double.infinity,
@@ -347,6 +433,9 @@ class _CreateFormSubBahanPageState extends State<CreateFormSubBahanPage> {
     );
   }
 
+  // ============================================================
+  // WIDGET HELPERS
+  // ============================================================
   Widget _textField({
     required String label,
     TextEditingController? controller,
@@ -449,6 +538,9 @@ class _CreateFormSubBahanPageState extends State<CreateFormSubBahanPage> {
   }
 }
 
+// ============================================================
+// SECTION CARD
+// ============================================================
 class _SectionCard extends StatelessWidget {
   const _SectionCard({
     required this.title,
@@ -514,6 +606,9 @@ class _SectionCard extends StatelessWidget {
   }
 }
 
+// ============================================================
+// ITEM ROW DATA
+// ============================================================
 class _ItemRowData {
   int? rawMaterialId;
   String name = '';
@@ -527,6 +622,9 @@ class _ItemRowData {
   }
 }
 
+// ============================================================
+// ITEM ROW WIDGET
+// ============================================================
 class _ItemRow extends StatelessWidget {
   const _ItemRow({
     required this.data,
